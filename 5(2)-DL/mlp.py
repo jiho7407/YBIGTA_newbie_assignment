@@ -66,18 +66,52 @@ class MultiLayerPerceptron(object):
         ### CODE HERE ###
         # 행렬 연산 후 activation function 적용
         # y_hat을 X.shape[0] 크기로 reshape해야한다.
-        h1 = #TODO
-        z1 = #TODO
+        """
+        ## Problem
 
-        h2 = #TODO
-        z2 = #TODO
+Mutilayer Perceptron(```class MutiLayerPerceptron```)으로 간단한 Binary classification task를 진행해볼 것입니다. 
 
-        h3 = #TODO
-        z3 = #TODO
+> 1. **Dataset**
+>> $\texttt{moon}$ dataset
+> 2. **Network architecture**
 
-        h4 = #TODO
-        y_hat = #TODO
-        y_hat = #TODO
+ > $H_1 = X \cdot W_1 + b_1$   
+ > $z_1 = ReLU(H_1)$ where $ReLU$($=\max(0,x)$) is a rectified linear unit and $z_1$ is an output of the first hidden layer.  
+ > $H_2 = z_1 \cdot W_2 + b_2$   
+ > $z_2 = LeakyReLU(H_2)$ where $LeakyReLU$($=\max(0.01x,x)$) and $z_2$ is an output of the second hidden layer. 
+ > $H_3 = z_2 \cdot W_3 + b_3$   
+ > $z_3 = tanh(H_3 + H_1)$ where $\tanh$ is a tanh function and $z_3$ is an output of the third hidden layer.  
+ > $H_4 = z_3 \cdot W_4 + b_4$   
+ > $\hat y = \sigma(H_4)$ where $\sigma$ is a sigmoid function unit and $\hat y$ is an output of the network.
+ 
+ > **$W$** and **$b$**는 각각 weights와 bias.    
+ > **weight 초기화**: Standard normal ($\texttt{np.random.randn}$. 사용)  
+ > **bias 초기화(intercept)**: 0     
+ > **Input size**: 2  
+ > **The first hidden layer size**: 10  
+ > **The second hidden layer size**: 10  
+ > **Output size**: 1   
+ > **Regularization parameter $\lambda$**: 0.001  
+ > **Loss function**: Binary cross entropy loss (or equivently log loss).  
+ > **Total loss** : 
+ > $L_{total} = \sum_{i=1}^N{ (-y^{(i)}\log \hat{y}^{(i)} -(1-y^{(i)})\log(1-\hat{y}^{(i)})) } +  \lambda \|W\|^2 $   
+ > **Optimization**: Gradient descent  
+ > **Learning rate** = 0.0001  
+ > **Number of epochs** = 50000  
+ > $y$는 정답, $\hat{y}$는 예측값이고 0부터 1사이에 존재한다.  
+        """
+        h1 = np.dot(X, W1) + b1
+        z1 = relu(h1)
+
+        h2 = np.dot(z1, W2) + b2
+        z2 = leakyrelu(h2)
+
+        h3 = np.dot(z2, W3) + b3
+        z3 = tanh(h3 + h1)
+
+        h4 = np.dot(z3, W4) + b4
+        y_hat = sigmoid(h4)
+        y_hat = y_hat.reshape(-1)
 
         ############################
         
@@ -119,6 +153,17 @@ class MultiLayerPerceptron(object):
         ### CODE HERE ###
         # 'gradient 계산하는 과정'을 참고하여 gradient 계산
         # dh3, db3, dW3, dz2, dh2, db2, dW2, dz1, dh1, db1, dW1 계산
+        dh3 = dz3 * (1 - z3**2)  # tanh
+        db3 = np.sum(dh3, axis=0)
+        dW3 = z2.T @ dh3 + 2 * L2_norm * W3
+        dz2 = dh3 @ W3.T
+        dh2 = dz2 * np.where(h2 > 0, 1, 0.01)  # leaky relu
+        db2 = np.sum(dh2, axis=0)
+        dW2 = z1.T @ dh2 + 2 * L2_norm * W2
+        dz1 = dh2 @ W2.T
+        dh1 = dz1 * (h1 > 0)  # relu
+        db1 = np.sum(dh1, axis=0)
+        dW1 = X.T @ dh1 + 2 * L2_norm * W1
        
         ################
         ############################################################
@@ -189,19 +234,19 @@ class MultiLayerPerceptron(object):
             # Forward propagation 후에 loss 계산, 
             # Back propagation 수행 후에 gradient update
 
-            y_hat, cache = #TODO
-            loss = #TODO
-            grad = #TODO
+            y_hat, cache = self.forward_propagation(X_train)
+            loss = self.compute_loss(y_hat, y_train, L2_norm)
+            grad = self.back_propagation(cache, X_train, y_train, L2_norm)
 
             # Gradient update
-            self.model['W1'] -= #TODO
-            self.model['b1'] -= #TODO
-            self.model['W2'] -= #TODO
-            self.model['b2'] -= #TODO
-            self.model['W3'] -= #TODO
-            self.model['b3'] -= #TODO
-            self.model['W4'] -= #TODO
-            self.model['b4'] -= #TODO
+            self.model['W1'] -= learning_rate * grad['dW1']
+            self.model['b1'] -= learning_rate * grad['db1']
+            self.model['W2'] -= learning_rate * grad['dW2']
+            self.model['b2'] -= learning_rate * grad['db2']
+            self.model['W3'] -= learning_rate * grad['dW3']
+            self.model['b3'] -= learning_rate * grad['db3']
+            self.model['W4'] -= learning_rate * grad['dW4']
+            self.model['b4'] -= learning_rate * grad['db4']
 
             ################# 
             if (it+1) % 1000 == 0:
@@ -234,6 +279,8 @@ class MultiLayerPerceptron(object):
     def predict(self, X):
         ### CODE HERE ###
         # Binary classification이므로 0.5 이상이면 1, 아니면 0으로 예측
+        y_hat, _ = self.forward_propagation(X)
+        predictions = (y_hat >= 0.5).astype(int)
         
         ##################
         return predictions
@@ -248,14 +295,14 @@ def tanh(x):
 
 def relu(x):
     ### CODE HERE ###
-    
+    x = np.maximum(0, x)
     ############################
     return x
 
 
 def leakyrelu(x):
     ### CODE HERE ###
-    
+    x = np.where(x > 0, x, 0.01 * x)
     ############################
     return x 
 

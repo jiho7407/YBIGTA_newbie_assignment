@@ -208,3 +208,7 @@ __marimo__/
 
 # datas
 creditcard.csv
+*/data
+
+# temp files
+*/.DS_Store

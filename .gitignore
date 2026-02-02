@@ -212,3 +212,8 @@ creditcard.csv
 
 # temp files
 */.DS_Store
+
+# checkpoints
+**/checkpoints/
+*.pt
+*.pth
